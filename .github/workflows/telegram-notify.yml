@@ -1,0 +1,31 @@
+name: Notify Telegram with Custom Output
+
+on:
+  push: # Trigger for all branches
+    branches:
+      - '**'
+  issues: # Trigger for issue events
+  pull_request: # Trigger for pull request events
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Generate Custom Message
+        id: generate_message
+        run: |
+          echo "Generating custom message..."
+          echo '${{ toJson(github) }}' | jq -c '.' > github_context.json
+          cat github_context.json # for debugging purposes
+          python3 .github/workflows/generate_message.py github_context.json > message.txt
+
+      - name: Send Telegram Notification
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d parse_mode="Markdown" \
+          -d text="$(cat message.txt)"
